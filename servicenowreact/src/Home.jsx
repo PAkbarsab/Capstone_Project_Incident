@@ -6,8 +6,9 @@ import {
   CardContent,
   Grid,
   TextField,
+  Box,
+  Divider,
 } from "@mui/material";
-
 import { useContext, useEffect, useState } from "react";
 import { AuthContext } from "./AuthProvider";
 import axios from "axios";
@@ -15,14 +16,21 @@ import axios from "axios";
 export default function Home() {
   const { isLogged } = useContext(AuthContext);
   const [incidents, setIncidents] = useState([]);
+
   const [formData, setFormData] = useState({
     impact: "",
     urgency: "",
     short_description: "",
   });
-  const [editing, setEditing] = useState(null); 
+
+  const [editing, setEditing] = useState(null);
 
   
+  const [search, setSearch] = useState("");
+
+  const impactOptions = ["1 - High", "2 - Medium", "3 - Low"];
+  const urgencyOptions = ["1 - High", "2 - Medium", "3 - Low"];
+
   useEffect(() => {
     async function fetchData() {
       if (isLogged) {
@@ -40,12 +48,10 @@ export default function Home() {
     fetchData();
   }, [isLogged]);
 
-  
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       if (editing) {
-        
         await axios.put(
           `http://localhost:3001/api/incidents/${editing}`,
           {
@@ -57,7 +63,6 @@ export default function Home() {
         );
         alert("Incident updated successfully!");
       } else {
-        
         await axios.post(
           "http://localhost:3001/api/incidents",
           {
@@ -75,7 +80,6 @@ export default function Home() {
       });
       setIncidents(res.data.result || []);
 
-     
       setFormData({ impact: "", urgency: "", short_description: "" });
       setEditing(null);
     } catch (err) {
@@ -90,9 +94,7 @@ export default function Home() {
         withCredentials: true,
       });
 
-      setIncidents((prevIncidents) =>
-        prevIncidents.filter((inc) => inc.sys_id !== sys_id)
-      );
+      setIncidents((prev) => prev.filter((i) => i.sys_id !== sys_id));
       setEditing(null);
     } catch (err) {
       console.error("Delete failed:", err);
@@ -100,7 +102,6 @@ export default function Home() {
     }
   };
 
- 
   const handleEdit = (inc) => {
     setFormData({
       impact: inc.impact || "",
@@ -113,77 +114,161 @@ export default function Home() {
   return (
     <>
       {isLogged && incidents ? (
-        <Stack spacing={3}>
-          <Typography variant="h5">Incident Records:</Typography>
+        <Stack spacing={4}>
+          <Typography variant="h4" sx={{ fontWeight: 600 }}>
+            Incident Dashboard
+          </Typography>
 
-          <form onSubmit={handleSubmit}>
-            <Stack direction="row" spacing={2} alignItems="center" justifyContent="center">
+          <Box
+            component="form"
+            onSubmit={handleSubmit}
+            sx={{
+              p: 3,
+              borderRadius: 3,
+              boxShadow: 3,
+              background: "background.paper",
+            }}
+          >
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 500 }}>
+              {editing ? "Edit Incident" : "Create New Incident"}
+            </Typography>
+
+            <Stack direction="row" spacing={2}>
               <TextField
+                select
                 label="Impact"
                 value={formData.impact}
-                onChange={(e) => setFormData({ ...formData, impact: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, impact: e.target.value })
+                }
                 required
                 size="small"
                 sx={{ width: 150 }}
-              />
+                SelectProps={{ native: true }}
+              >
+                <option value=""></option>
+                {impactOptions.map((val) => (
+                  <option key={val} value={val}>
+                    {val}
+                  </option>
+                ))}
+              </TextField>
+
               <TextField
+                select
                 label="Urgency"
                 value={formData.urgency}
-                onChange={(e) => setFormData({ ...formData, urgency: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, urgency: e.target.value })
+                }
                 required
                 size="small"
                 sx={{ width: 150 }}
-              />
+                SelectProps={{ native: true }}
+              >
+                <option value=""></option>
+                {urgencyOptions.map((val) => (
+                  <option key={val} value={val}>
+                    {val}
+                  </option>
+                ))}
+              </TextField>
+
+      
               <TextField
                 label="Short Description"
                 value={formData.short_description}
-                onChange={(e) => setFormData({ ...formData, short_description: e.target.value })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    short_description: e.target.value,
+                  })
+                }
                 required
                 size="small"
-                sx={{ width: 300 }}
+                sx={{ width: 350 }}
               />
 
-              <Button type="submit" variant="contained" color="primary">
-                {editing ? "Update Incident" : "Insert Incident"}
+              <Button
+                type="submit"
+                variant="contained"
+                sx={{ px: 4, borderRadius: 2 }}
+              >
+                {editing ? "Update" : "Create"}
               </Button>
             </Stack>
-          </form>
+          </Box>
 
-          <Grid container spacing={5} justifyContent={"space-around"}>
-            {incidents.map((inc) => {
-              return (
-                <Grid key={inc.sys_id}>
-                  <Card sx={{ width: 300, height: 200 }}>
+          <Divider />
+
+          <TextField
+            label="Search Incidents"
+            variant="outlined"
+            size="small"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            sx={{ width: 300 }}
+          />
+      
+          <Grid container spacing={4}>
+            {incidents
+              .filter(
+                (inc) =>
+                  inc.short_description
+                    ?.toLowerCase()
+                    .includes(search.toLowerCase()) ||
+                  inc.number?.toLowerCase().includes(search.toLowerCase())
+              )
+              .map((inc) => (
+                <Grid key={inc.sys_id} item>
+                  <Card
+                    sx={{
+                      width: 330,
+                      borderRadius: 3,
+                      boxShadow: 4,
+                      p: 1,
+                      transition: "0.3s",
+                      ":hover": { boxShadow: 8, transform: "scale(1.02)" },
+                    }}
+                  >
                     <CardContent>
-                      <Typography variant="h6">Incident #: {inc.number}</Typography>
-                      <Typography variant="body2">
-                        Description: {inc.short_description}
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        #{inc.number}
                       </Typography>
-                      <Typography variant="body2">State: {inc.state}</Typography>
-                      <Typography variant="body2">Priority: {inc.priority}</Typography>
 
-                      <Button
-                        sx={{ mt: 1 }}
-                        variant="contained"
-                        color="success"
-                        onClick={() => handleEdit(inc)} // ✅ wired here
-                      >
-                        Edit
-                      </Button>
+                      <Typography variant="body2" sx={{ mt: 1 }}>
+                        <strong>Description:</strong> {inc.short_description}
+                      </Typography>
 
-                      <Button
-                        sx={{ mt: 1, mx: 1 }}
-                        variant="contained"
-                        color="error"
-                        onClick={() => handleDelete(inc.sys_id)}
-                      >
-                        Delete
-                      </Button>
+                      <Typography variant="body2" sx={{ mt: 1 }}>
+                        <strong>Priority:</strong> {inc.priority}
+                      </Typography>
+
+                      <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                        <Button
+                          variant="contained"
+                          color="success"
+                          size="small"
+                          onClick={() => handleEdit(inc)}
+                          sx={{ borderRadius: 2 }}
+                        >
+                          Edit
+                        </Button>
+
+                        <Button
+                          variant="contained"
+                          color="error"
+                          size="small"
+                          onClick={() => handleDelete(inc.sys_id)}
+                          sx={{ borderRadius: 2 }}
+                        >
+                          Delete
+                        </Button>
+                      </Stack>
                     </CardContent>
                   </Card>
                 </Grid>
-              );
-            })}
+              ))}
           </Grid>
         </Stack>
       ) : (
